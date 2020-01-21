@@ -4,10 +4,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fstream>
 
-void createArchive(char *directory);
+#include "./FileManager/FileManager.h"
 
 int main(int argc, char* argv[]) {
+  
     int c;
     char short_options[] = "a:c:elp:r:";
 
@@ -61,6 +63,7 @@ int main(int argc, char* argv[]) {
             printf("%s ", argv[optind++]);
         printf("\n");
     }
+
 
     return 0;
 }
