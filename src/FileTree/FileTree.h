@@ -8,10 +8,11 @@ class FileTree {
 public:
     FileTree();
 
-    void addFiles(const char *const files[]);
-
+    void buildFileTree(const char *path, FileTreeNode *&r);
+    FileTreeNode **getRoot();
+    void output(FileTreeNode *r);
 private:
-    FileTreeNode *root;
+    FileTreeNode *root_;
 };
 
 #endif //FILE_ARCHIVER_FILETREE_H

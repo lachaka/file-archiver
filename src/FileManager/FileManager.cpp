@@ -1,9 +1,7 @@
 
-
 #include <sys/stat.h>
 #include <dirent.h>
 #include <stdio.h>
-#include <libgen.h>
 #include <cstring>
 
 #include "FileManager.h"
@@ -17,40 +15,45 @@ void FileManager::directoryWalk(const char *path, FileTreeNode *&r) {
     struct dirent *dp;
 
     if ((dir = opendir (path)) != nullptr) {
-        FileTreeNode *it = r->children_;
         while ((dp = readdir (dir)) != nullptr) {
             if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-                char *filename;
-                if (isDirectory(dp->d_name)) {
-                    filename = new char[strlen(dp->d_name) + 3];
-                    strcpy(filename, dp->d_name);
-                    strcat(filename, "//");
-                } else {
-                    filename = new char[strlen(dp->d_name) + 1];
-                    strcpy(filename, dp->d_name);
+                char *filename = new char[strlen(dp->d_name) + strlen(path) + 2];
+                strcpy(filename, path);
+                strcat(filename, dp->d_name);
+
+                if (isDirectory(filename)) {
+                    strcat(filename, "/");
                 }
 
-                FileTreeNode* fileEntry = new FileTreeNode(filename);
-                it = fileEntry;
-                it = it->sibling_;
+                FileTreeNode *n = new FileTreeNode(filename + strlen(path));
+                n->sibling_ = r->children_;
+                r->children_ = n;
             }
         }
         closedir (dir);
     } else {
-        /* could not open directory */
         perror("FileManager::directoryWalk");
         return;
     }
 }
 
-bool FileManager::checkIfFileExists(const char *filename) const {
+bool FileManager::checkIfFileExists(const char *filename) {
     struct stat buf;
     return stat (filename, &buf) == 0;
 }
 
-bool FileManager::isDirectory(const char *filename) const {
+bool FileManager::isDirectory(const char *filename) {
     struct stat buf;
     if (stat(filename, &buf) == 0)
         return (buf.st_mode & S_IFMT) == S_IFDIR;
+
     return false;
+}
+
+const char *FileManager::join(const char *path, const char *file) {
+    char *fullPath = new char[strlen(path) + strlen(file) + 1];
+    strcpy(fullPath, path);
+    strcat(fullPath, file);
+
+    return fullPath;
 }

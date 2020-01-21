@@ -8,14 +8,14 @@ class FileManager {
 public:
     FileManager();
 
-    void directoryWalk(const char *path, FileTreeNode *&r);
-
+    static void directoryWalk(const char *path, FileTreeNode *&r);
+    static const char *join(const char *path, const char *file);
 private:
     FileManager(const FileManager&) = delete;
     FileManager &operator=(const FileManager&) = delete;
 
-    bool checkIfFileExists(const char *filename) const;
-    bool isDirectory(const char *filename) const;
+    static bool checkIfFileExists(const char *filename);
+    static bool isDirectory(const char *filename);
 };
 
 
