@@ -9,7 +9,9 @@ public:
     FileManager();
 
     static void directoryWalk(const char *path, FileTreeNode *&r);
-    static const char *join(const char *path, const char *file);
+    static char *join(const char *path, const char *file);
+    static void createArchive(const char *path);
+
 private:
     FileManager(const FileManager&) = delete;
     FileManager &operator=(const FileManager&) = delete;

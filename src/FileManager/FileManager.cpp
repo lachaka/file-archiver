@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <stdio.h>
 #include <cstring>
+#include <fstream>
 
 #include "FileManager.h"
 
@@ -17,9 +18,7 @@ void FileManager::directoryWalk(const char *path, FileTreeNode *&r) {
     if ((dir = opendir (path)) != nullptr) {
         while ((dp = readdir (dir)) != nullptr) {
             if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-                char *filename = new char[strlen(dp->d_name) + strlen(path) + 2];
-                strcpy(filename, path);
-                strcat(filename, dp->d_name);
+                char *filename = join(path, dp->d_name);
 
                 if (isDirectory(filename)) {
                     strcat(filename, "/");
@@ -28,6 +27,8 @@ void FileManager::directoryWalk(const char *path, FileTreeNode *&r) {
                 FileTreeNode *n = new FileTreeNode(filename + strlen(path));
                 n->sibling_ = r->children_;
                 r->children_ = n;
+
+                delete[] filename;
             }
         }
         closedir (dir);
@@ -37,6 +38,11 @@ void FileManager::directoryWalk(const char *path, FileTreeNode *&r) {
     }
 }
 
+void createArchive(const char *path) {
+    std::ofstream archive(path, std::ios::binary | std::ios::out);
+  //  createHelper();
+}
+
 bool FileManager::checkIfFileExists(const char *filename) {
     struct stat buf;
     return stat (filename, &buf) == 0;
@@ -44,14 +50,15 @@ bool FileManager::checkIfFileExists(const char *filename) {
 
 bool FileManager::isDirectory(const char *filename) {
     struct stat buf;
+
     if (stat(filename, &buf) == 0)
         return (buf.st_mode & S_IFMT) == S_IFDIR;
 
     return false;
 }
 
-const char *FileManager::join(const char *path, const char *file) {
-    char *fullPath = new char[strlen(path) + strlen(file) + 1];
+char *FileManager::join(const char *path, const char *file) {
+    char *fullPath = new char[strlen(path) + strlen(file) + 2];
     strcpy(fullPath, path);
     strcat(fullPath, file);
 
