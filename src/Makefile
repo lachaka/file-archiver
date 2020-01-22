@@ -9,8 +9,8 @@ all: $(binaries)
 FileManager.o: FileManager/FileManager.cpp
 				$(CXX) -c FileManager/FileManager.cpp
 
-FileTree.o: FileTree/FileTree.cpp
-				$(CXX) -c FileTree/FileTree.cpp
+FileTree.o: FileManager/FileTree/FileTree.cpp
+				$(CXX) -c FileManager/FileTree/FileTree.cpp
 
 main.o: main.cpp
 		$(CXX) -c main.cpp

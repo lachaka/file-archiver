@@ -1,10 +1,11 @@
 
 #include <sys/stat.h>
 #include <dirent.h>
-#include <stdio.h>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 
+#include "DataDescriptors/FileHeader.h"
 #include "FileManager.h"
 
 FileManager::FileManager() {
@@ -38,11 +39,6 @@ void FileManager::directoryWalk(const char *path, FileTreeNode *&r) {
     }
 }
 
-void createArchive(const char *path) {
-    std::ofstream archive(path, std::ios::binary | std::ios::out);
-  //  createHelper();
-}
-
 bool FileManager::checkIfFileExists(const char *filename) {
     struct stat buf;
     return stat (filename, &buf) == 0;
@@ -58,9 +54,73 @@ bool FileManager::isDirectory(const char *filename) {
 }
 
 char *FileManager::join(const char *path, const char *file) {
-    char *fullPath = new char[strlen(path) + strlen(file) + 2];
+    char *fullPath = new char[strlen(path) + strlen(file) + 2]; // here we are using +2 because if file is a dir, we have to add forward slash in directory walk function
     strcpy(fullPath, path);
     strcat(fullPath, file);
 
     return fullPath;
+}
+
+void FileManager::createArchive(const char *archiveFilename, FileTreeNode* r) {
+    std::ofstream archive(archiveFilename, std::ios::binary | std::ios::out);
+    if (archive.fail()) {
+        throw std::runtime_error("FileManger::createArchive");
+    }
+
+    FileHeader fileHeader;
+    serialize(archive, r, &fileHeader);
+
+    archive.close();
+}
+
+void FileManager::serialize(std::ofstream &archiveFile, const FileTreeNode *r, FileHeader *fileHeader) {
+    char *filePath = join(fileHeader->filename_, fileHeader->filename_);
+    int siblingOffset = 0;
+    int childOffset = 0;
+    saveFileHeaderToArchive(archiveFile, fileHeader);
+    saveFileContentToArchive(archiveFile, filePath);
+
+    delete[] filePath;
+
+    if (r->sibling_) {
+        rewriteOffset(archiveFile, siblingOffset);
+        serialize(archiveFile, r->sibling_, fileHeader);
+    }
+
+    if (r->children_) {
+        rewriteOffset(archiveFile, childOffset);
+        serialize(archiveFile, r->children_, fileHeader);
+    }
+}
+
+void FileManager::saveFileHeaderToArchive(std::ofstream &archiveFile, const FileHeader *file) {
+    archiveFile.write((const char*)&file->siblingOffset_, sizeof(file->siblingOffset_));
+    archiveFile.write((const char*)&file->childOffset_, sizeof(file->childOffset_));
+
+    archiveFile.write((const char*)&file->fileSize_, sizeof(file->fileSize_));
+    archiveFile.write((const char*)&file->filenameLen_, sizeof(file->filenameLen_));
+    archiveFile.write(file->filename_, file->filenameLen_);
+}
+
+void FileManager::saveFileContentToArchive(std::ofstream &archiveFile, const char *filePath) {
+    std::ifstream ifs(filePath, std::ios::binary);
+    if (ifs.bad()) {
+
+    }
+    /*
+    char buffer[256];
+
+    while (!ifs.eof()) {
+        ifs.read(buffer, sizeof(buffer));
+        archiveFile.write(buffer, ifs.gcount());
+    }*/
+    archiveFile << ifs.rdbuf();
+
+    ifs.close();
+}
+
+void FileManager::rewriteOffset(std::ofstream &archiveFile, int offset) {
+    int endPos = archiveFile.tellp();
+    archiveFile.seekp(offset);
+    archiveFile.write((const char *)&endPos, sizeof(endPos));
 }

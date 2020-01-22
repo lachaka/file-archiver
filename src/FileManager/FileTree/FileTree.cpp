@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "../FileManager/FileManager.h"
+#include "../FileManager.h"
 #include "FileTree.h"
 
 FileTree::FileTree() {
