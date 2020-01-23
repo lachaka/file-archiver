@@ -5,16 +5,24 @@
 #include <cstring>
 
 struct FileTreeNode {
-    char *file_;
+    char *filename_;
     FileTreeNode *sibling_;
     FileTreeNode *children_;
 
     FileTreeNode(const char *file) : sibling_(nullptr), children_(nullptr) {
         if (file == nullptr) {
-            //throw std::invalid_argument();
+            throw std::invalid_argument("FileTreeNode::filename_ is invalid");
         }
-        file_ = new char[strlen(file) + 1];
-        strcpy(file_, file);
+        filename_ = new char[strlen(file) + 1];
+        strcpy(filename_, file);
+    }
+
+    ~FileTreeNode() {
+        delete[] filename_;
+    }
+
+    bool isDirectory() const {
+        return filename_[strlen(filename_) - 1] == '/';
     }
 };
 

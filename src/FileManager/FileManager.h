@@ -11,7 +11,8 @@ public:
 
     static void directoryWalk(const char *path, FileTreeNode *&r);
     static char *join(const char *path, const char *file);
-    static void createArchive(const char *archiveFilename, FileTreeNode* r);
+    static void createArchive(const char *archiveName, FileTreeNode* r);
+    static void extract(const char *archiveName);
 
 private:
     FileManager(const FileManager&) = delete;
@@ -20,10 +21,11 @@ private:
     static bool checkIfFileExists(const char *filename);
     static bool isDirectory(const char *filename);
 
-    static void serialize(std::ofstream &archiveFile, const FileTreeNode *r, FileHeader *fileHeader);
+    static void serialize(std::ofstream &archiveFile, const FileTreeNode *r, const char *filePath);
     static void saveFileHeaderToArchive(std::ofstream &archiveFile, const FileHeader *file);
     static void saveFileContentToArchive(std::ofstream &archiveFile, const char *filePath);
-    static void rewriteOffset(std::ofstream &archiveFile, int offset);
+    static void rewriteOffsetWithEndPos(std::ofstream &archiveFile, int offset);
+    static int getFileSize(const char *file);
 };
 
 

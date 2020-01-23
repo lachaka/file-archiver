@@ -1,9 +1,9 @@
 
 #include <sys/stat.h>
 #include <dirent.h>
-#include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <iostream>
 
 #include "DataDescriptors/FileHeader.h"
 #include "FileManager.h"
@@ -34,8 +34,7 @@ void FileManager::directoryWalk(const char *path, FileTreeNode *&r) {
         }
         closedir (dir);
     } else {
-        perror("FileManager::directoryWalk");
-        return;
+        throw std::runtime_error("FileManager::directoryWalk");
     }
 }
 
@@ -61,36 +60,41 @@ char *FileManager::join(const char *path, const char *file) {
     return fullPath;
 }
 
-void FileManager::createArchive(const char *archiveFilename, FileTreeNode* r) {
-    std::ofstream archive(archiveFilename, std::ios::binary | std::ios::out);
+void FileManager::createArchive(const char *archiveName, FileTreeNode* r) {
+    std::ofstream archive(archiveName, std::ios::binary | std::ios::out);
     if (archive.fail()) {
         throw std::runtime_error("FileManger::createArchive");
     }
 
-    FileHeader fileHeader;
-    serialize(archive, r, &fileHeader);
+    serialize(archive, r->children_, r->filename_);
 
     archive.close();
 }
 
-void FileManager::serialize(std::ofstream &archiveFile, const FileTreeNode *r, FileHeader *fileHeader) {
-    char *filePath = join(fileHeader->filename_, fileHeader->filename_);
-    int siblingOffset = 0;
-    int childOffset = 0;
-    saveFileHeaderToArchive(archiveFile, fileHeader);
-    saveFileContentToArchive(archiveFile, filePath);
+void FileManager::serialize(std::ofstream &archiveFile, const FileTreeNode *r, const char *path) {
+    int headerStartPos = archiveFile.tellp();
 
-    delete[] filePath;
+    char *filePath = join(path, r->filename_);
+    unsigned int fileSize = r->isDirectory() ? 0 : getFileSize(filePath);
+
+    FileHeader fileHeader(fileSize, r->filename_);
+    saveFileHeaderToArchive(archiveFile, &fileHeader);
+
+    if (!r->isDirectory()) {
+        saveFileContentToArchive(archiveFile, filePath);
+    }
 
     if (r->sibling_) {
-        rewriteOffset(archiveFile, siblingOffset);
-        serialize(archiveFile, r->sibling_, fileHeader);
+        rewriteOffsetWithEndPos(archiveFile, headerStartPos);
+        serialize(archiveFile, r->sibling_, path);
     }
 
     if (r->children_) {
-        rewriteOffset(archiveFile, childOffset);
-        serialize(archiveFile, r->children_, fileHeader);
+        rewriteOffsetWithEndPos(archiveFile, headerStartPos + sizeof(fileHeader.siblingOffset_));
+        serialize(archiveFile, r->children_, filePath);
     }
+
+    delete[] filePath;
 }
 
 void FileManager::saveFileHeaderToArchive(std::ofstream &archiveFile, const FileHeader *file) {
@@ -119,8 +123,36 @@ void FileManager::saveFileContentToArchive(std::ofstream &archiveFile, const cha
     ifs.close();
 }
 
-void FileManager::rewriteOffset(std::ofstream &archiveFile, int offset) {
+void FileManager::rewriteOffsetWithEndPos(std::ofstream &archiveFile, int offset) {
     int endPos = archiveFile.tellp();
+
     archiveFile.seekp(offset);
     archiveFile.write((const char *)&endPos, sizeof(endPos));
+    archiveFile.seekp(0, std::ios::end);
+}
+
+int FileManager::getFileSize(const char *file) {
+    struct stat buf;
+
+    if (stat(file, &buf) == 0) {
+        return buf.st_size;
+    }
+
+    return 0;
+}
+
+void FileManager::extract(const char *archiveName) {
+    if (!checkIfFileExists(archiveName)) {
+        throw std::invalid_argument("FileManager::extract file does not exists");
+    }
+
+    std::ifstream archive(archiveName, std::ios::binary);
+    if (!archive) {
+        throw std::runtime_error("FileManager::extract error while opening archived file");
+    }
+
+    while (!archive.eof()) {
+            
+    }
+
 }
