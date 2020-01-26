@@ -1,13 +1,19 @@
 
 
-#include <iostream>
+#include <fstream>
+#include <unistd.h>
 
 #include "../FileManager.h"
 #include "FileTree.h"
 
-FileTree::FileTree() {
-    root_ = new FileTreeNode("../src/data/");
-    buildFileTree(root_->filename_, root_);
+FileTree::FileTree(const char *directory) {
+    if (!FileManager::checkIfFileExists(directory)) {
+        throw std::invalid_argument("FileTree::FileTree() - invalid directory");
+    }
+    root_ = new FileTreeNode(directory);
+    chdir(directory);
+    buildFileTree(directory, root_);
+    chdir("../");
 }
 
 FileTree::~FileTree() {
@@ -15,32 +21,16 @@ FileTree::~FileTree() {
 }
 
 void FileTree::buildFileTree(const char *path, FileTreeNode *&r) {
-    FileManager::directoryWalk(path, r);
+    FileManager::directoryWalk("./", r);
 
     FileTreeNode *it = r->children_;
     while (it) {
-        if (it->filename_[strlen(it->filename_) - 1] == '/') {
-            const char* fullPath = FileManager::join(path, it->filename_);
-
-            buildFileTree(fullPath, it);
-
-            delete[] fullPath;
+        if (it->isDirectory()) {
+            chdir(it->filename_);
+            buildFileTree(it->filename_, it);
+            chdir("../");
         }
         it = it->sibling_;
-    }
-}
-
-FileTreeNode **FileTree::getRoot() {
-    return &root_;
-}
-
-void FileTree::output(FileTreeNode *r) {
-    std::cout << r->filename_ << std::endl;
-    if (r->sibling_) {
-        output(r->sibling_);
-    }
-    if (r->children_) {
-        output(r->children_);
     }
 }
 
@@ -48,8 +38,39 @@ void FileTree::destroy(FileTreeNode *r) {
     if (!r) {
         return;
     }
+
     destroy(r->sibling_);
     destroy(r->children_);
 
     delete r;
+}
+
+void FileTree::serialize(std::ofstream &archiveFile) {
+    serialize(archiveFile, root_->children_, root_->filename_);
+}
+
+void FileTree::serialize(std::ofstream &archiveFile, const FileTreeNode *r, const char *path) {
+    int headerStartPos = archiveFile.tellp();
+
+    char *filePath = FileManager::join(path, r->filename_);
+    unsigned int fileSize = r->isDirectory() ? 0 : FileManager::getFileSize(filePath);
+
+    FileHeader fileHeader(fileSize, r->filename_);
+    FileManager::saveFileHeaderToArchive(archiveFile, &fileHeader);
+
+    if (!r->isDirectory()) {
+        FileManager::saveFileContentToArchive(archiveFile, filePath);
+    }
+
+    if (r->sibling_) {
+        FileManager::rewriteOffsetWithEndPos(archiveFile, headerStartPos);
+        serialize(archiveFile, r->sibling_, path);
+    }
+
+    if (r->children_) {
+        FileManager::rewriteOffsetWithEndPos(archiveFile, headerStartPos + sizeof(fileHeader.siblingOffset_));
+        serialize(archiveFile, r->children_, filePath);
+    }
+
+    delete[] filePath;
 }

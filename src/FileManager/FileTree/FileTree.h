@@ -6,14 +6,16 @@
 
 class FileTree {
 public:
-    FileTree();
+    explicit FileTree(const char *directory);
     ~FileTree();
 
     void buildFileTree(const char *path, FileTreeNode *&r);
-    FileTreeNode **getRoot();
-    void output(FileTreeNode *r);
+    void serialize(std::ofstream &archiveFile);
+
 private:
     FileTreeNode *root_;
+
+    void serialize(std::ofstream &archiveFile, const FileTreeNode *r, const char *path);
 
     void destroy(FileTreeNode *pNode);
 };

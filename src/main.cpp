@@ -1,8 +1,13 @@
 #include <iostream>
 #include <getopt.h>
+#include <fstream>
+#include "FileManager/FileTree/FileTree.h"
+#include "FileManager/FileManager.h"
+#include "Archiver.h"
+#include <cstring>
 
 int main(int argc, char* argv[]) {
-    int c;
+   /* int c;
     char short_options[] = "a:c:elp:r:";
 
     while (1) {
@@ -55,6 +60,12 @@ int main(int argc, char* argv[]) {
             printf("%s ", argv[optind++]);
         printf("\n");
     }
+*/
+
+    Archiver archiver("zipper.arch");
+    archiver.create("data/");
+
+    archiver.extract("tst/");
 
     return 0;
 }

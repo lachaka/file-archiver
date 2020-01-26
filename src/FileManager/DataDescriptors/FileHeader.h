@@ -28,6 +28,10 @@ struct FileHeader {
     ~FileHeader() {
         delete[] filename_;
     }
+
+    bool isDirectory() const {
+        return filename_[filenameLen_ - 1] == '/';
+    }
 };
 
 #endif //FILE_ARCHIVER_FILEHEADER_H

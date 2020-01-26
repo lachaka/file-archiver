@@ -8,10 +8,6 @@
 #include "DataDescriptors/FileHeader.h"
 #include "FileManager.h"
 
-FileManager::FileManager() {
-
-}
-
 void FileManager::directoryWalk(const char *path, FileTreeNode *&r) {
     DIR *dir;
     struct dirent *dp;
@@ -19,21 +15,24 @@ void FileManager::directoryWalk(const char *path, FileTreeNode *&r) {
     if ((dir = opendir (path)) != nullptr) {
         while ((dp = readdir (dir)) != nullptr) {
             if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-                char *filename = join(path, dp->d_name);
+                FileTreeNode *n;
 
-                if (isDirectory(filename)) {
-                    strcat(filename, "/");
+                if (isDirectory(dp->d_name)) {
+                    char *filename = join(dp->d_name, "/");
+                    n = new FileTreeNode(filename);
+
+                    delete[] filename;
+                } else {
+                    n = new FileTreeNode(dp->d_name);
                 }
 
-                FileTreeNode *n = new FileTreeNode(filename + strlen(path));
                 n->sibling_ = r->children_;
                 r->children_ = n;
-
-                delete[] filename;
             }
         }
         closedir (dir);
     } else {
+        perror("");
         throw std::runtime_error("FileManager::directoryWalk");
     }
 }
@@ -60,43 +59,6 @@ char *FileManager::join(const char *path, const char *file) {
     return fullPath;
 }
 
-void FileManager::createArchive(const char *archiveName, FileTreeNode* r) {
-    std::ofstream archive(archiveName, std::ios::binary | std::ios::out);
-    if (archive.fail()) {
-        throw std::runtime_error("FileManger::createArchive");
-    }
-
-    serialize(archive, r->children_, r->filename_);
-
-    archive.close();
-}
-
-void FileManager::serialize(std::ofstream &archiveFile, const FileTreeNode *r, const char *path) {
-    int headerStartPos = archiveFile.tellp();
-
-    char *filePath = join(path, r->filename_);
-    unsigned int fileSize = r->isDirectory() ? 0 : getFileSize(filePath);
-
-    FileHeader fileHeader(fileSize, r->filename_);
-    saveFileHeaderToArchive(archiveFile, &fileHeader);
-
-    if (!r->isDirectory()) {
-        saveFileContentToArchive(archiveFile, filePath);
-    }
-
-    if (r->sibling_) {
-        rewriteOffsetWithEndPos(archiveFile, headerStartPos);
-        serialize(archiveFile, r->sibling_, path);
-    }
-
-    if (r->children_) {
-        rewriteOffsetWithEndPos(archiveFile, headerStartPos + sizeof(fileHeader.siblingOffset_));
-        serialize(archiveFile, r->children_, filePath);
-    }
-
-    delete[] filePath;
-}
-
 void FileManager::saveFileHeaderToArchive(std::ofstream &archiveFile, const FileHeader *file) {
     archiveFile.write((const char*)&file->siblingOffset_, sizeof(file->siblingOffset_));
     archiveFile.write((const char*)&file->childOffset_, sizeof(file->childOffset_));
@@ -109,15 +71,9 @@ void FileManager::saveFileHeaderToArchive(std::ofstream &archiveFile, const File
 void FileManager::saveFileContentToArchive(std::ofstream &archiveFile, const char *filePath) {
     std::ifstream ifs(filePath, std::ios::binary);
     if (ifs.bad()) {
-
+        throw std::runtime_error("Archiver::saveFileContentToArchive() - error while saving file to archive");
     }
-    /*
-    char buffer[256];
 
-    while (!ifs.eof()) {
-        ifs.read(buffer, sizeof(buffer));
-        archiveFile.write(buffer, ifs.gcount());
-    }*/
     archiveFile << ifs.rdbuf();
 
     ifs.close();
@@ -141,18 +97,6 @@ int FileManager::getFileSize(const char *file) {
     return 0;
 }
 
-void FileManager::extract(const char *archiveName) {
-    if (!checkIfFileExists(archiveName)) {
-        throw std::invalid_argument("FileManager::extract file does not exists");
-    }
-
-    std::ifstream archive(archiveName, std::ios::binary);
-    if (!archive) {
-        throw std::runtime_error("FileManager::extract error while opening archived file");
-    }
-
-    while (!archive.eof()) {
-            
-    }
-
+bool FileManager::createDirectory(const char *directory) {
+    return mkdir(directory, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0;
 }

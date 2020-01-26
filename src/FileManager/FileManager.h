@@ -5,27 +5,20 @@
 #include "FileTree/FileTreeNode.h"
 #include "DataDescriptors/FileHeader.h"
 
-class FileManager {
-public:
-    FileManager();
+namespace FileManager {
+    void directoryWalk(const char *path, FileTreeNode *&r);
+    char *join(const char *path, const char *file);
 
-    static void directoryWalk(const char *path, FileTreeNode *&r);
-    static char *join(const char *path, const char *file);
-    static void createArchive(const char *archiveName, FileTreeNode* r);
-    static void extract(const char *archiveName);
+    bool checkIfFileExists(const char *filename);
+    bool isDirectory(const char *filename);
 
-private:
-    FileManager(const FileManager&) = delete;
-    FileManager &operator=(const FileManager&) = delete;
+    void saveFileHeaderToArchive(std::ofstream &archiveFile, const FileHeader *file);
+    void saveFileContentToArchive(std::ofstream &archiveFile, const char *filePath);
+    void rewriteOffsetWithEndPos(std::ofstream &archiveFile, int offset);
 
-    static bool checkIfFileExists(const char *filename);
-    static bool isDirectory(const char *filename);
+    int getFileSize(const char *file);
 
-    static void serialize(std::ofstream &archiveFile, const FileTreeNode *r, const char *filePath);
-    static void saveFileHeaderToArchive(std::ofstream &archiveFile, const FileHeader *file);
-    static void saveFileContentToArchive(std::ofstream &archiveFile, const char *filePath);
-    static void rewriteOffsetWithEndPos(std::ofstream &archiveFile, int offset);
-    static int getFileSize(const char *file);
+    bool createDirectory(const char *directory);
 };
 
 

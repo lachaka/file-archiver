@@ -1,10 +1,13 @@
 CXX = g++ -Wall
 
-binaries = FileManager.o FileTree.o main.o
+binaries = Archiver.o FileManager.o FileTree.o main.o
 
 all: $(binaries)
 		$(CXX) -o zipper $(binaries)
 		rm -f $(binaries)
+
+Archiver.o: Archiver.cpp
+		$(CXX) -c Archiver.cpp
 
 FileManager.o: FileManager/FileManager.cpp
 				$(CXX) -c FileManager/FileManager.cpp
