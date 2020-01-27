@@ -8,7 +8,7 @@ class Archiver {
 public:
     explicit Archiver(const char *archiveName);
 
-    void create(const char *directory);
+    void create(char *directory);
     void extract(const char *location="./");
     void list();
     void removeFile(const char *filename);

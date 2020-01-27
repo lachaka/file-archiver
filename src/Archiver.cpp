@@ -4,7 +4,6 @@
 #include <cstring>
 #include <unistd.h>
 
-#include "FileManager/FileTree/FileTree.h"
 #include "FileManager/FileManager.h"
 #include "Archiver.h"
 
@@ -17,14 +16,13 @@ Archiver::Archiver(const char *archiveName) {
     strcpy(archiveName_, archiveName);
 }
 
-void Archiver::create(const char *directory) {
+void Archiver::create(char *directory) {
     std::ofstream archive(archiveName_, std::ios::binary | std::ios::out);
     if (archive.fail()) {
         throw std::runtime_error("FileManger::createArchive");
     }
 
-    FileTree fileTree(directory);
-    fileTree.serialize(archive);
+    FileManager::directoryWalk(archive, directory);
 
     archive.close();
 }

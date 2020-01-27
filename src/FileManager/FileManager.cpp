@@ -8,26 +8,25 @@
 #include "DataDescriptors/FileHeader.h"
 #include "FileManager.h"
 
-void FileManager::directoryWalk(const char *path, FileTreeNode *&r) {
+void FileManager::directoryWalk(std::ofstream &archive, char *path) {
     DIR *dir;
     struct dirent *dp;
 
     if ((dir = opendir (path)) != nullptr) {
         while ((dp = readdir (dir)) != nullptr) {
             if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-                FileTreeNode *n;
-
+                char *filename = join(path, dp->d_name);
                 if (isDirectory(dp->d_name)) {
-                    char *filename = join(dp->d_name, "/");
-                    n = new FileTreeNode(filename);
+                    FileHeader header(0, dp->d_name);
+                    saveFileHeaderToArchive(archive, &header);
+                    //char *filename = join(dp->d_name, "/");
+                    //n = new FileTreeNode(filename);
+                    //delete[] filename;
 
-                    delete[] filename;
                 } else {
-                    n = new FileTreeNode(dp->d_name);
+                  FileHeader header(getFileSize(filename), dp->d_name);
+                  saveFileHeaderToArchive(archive, &header);
                 }
-
-                n->sibling_ = r->children_;
-                r->children_ = n;
             }
         }
         closedir (dir);
@@ -54,6 +53,7 @@ bool FileManager::isDirectory(const char *filename) {
 char *FileManager::join(const char *path, const char *file) {
     char *fullPath = new char[strlen(path) + strlen(file) + 2]; // here we are using +2 because if file is a dir, we have to add forward slash in directory walk function
     strcpy(fullPath, path);
+    strcat(fullPath, "/");
     strcat(fullPath, file);
 
     return fullPath;

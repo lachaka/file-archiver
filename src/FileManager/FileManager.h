@@ -2,11 +2,12 @@
 #ifndef FILE_ARCHIVER_FILEMANAGER_H
 #define FILE_ARCHIVER_FILEMANAGER_H
 
-#include "FileTree/FileTreeNode.h"
+#include <fstream>
+
 #include "DataDescriptors/FileHeader.h"
 
 namespace FileManager {
-    void directoryWalk(const char *path, FileTreeNode *&r);
+    void directoryWalk(std::ofstream &archive, char *path);
     char *join(const char *path, const char *file);
 
     bool checkIfFileExists(const char *filename);
