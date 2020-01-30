@@ -59,6 +59,11 @@ void Archiver::extractEntry(std::ifstream &archive, int pos, const char *dirname
     FileHeader header;
     readFileHeader(archive, &header);
 
+    std::cout << "Location: " << pos << std::endl;
+    std::cout << "Name: " << header.filename_ << std::endl;
+    std::cout << "Sibling: " << header.siblingOffset_ << std::endl;
+    std::cout << "Child: " << header.childOffset_ << std::endl << std::endl;
+
     if (header.isDirectory()) {
         char* dirPath = FileManager::joinFilename(dirname, header.filename_);
 
@@ -164,6 +169,8 @@ void Archiver::add(const char *filename) {
         throw std::runtime_error("Archvier::addFile() Error while opening archive");
     }
 
+    addFileToArchive(archive, filename);
+
     archive.close();
 }
 
@@ -174,7 +181,7 @@ void Archiver::removeFile(std::fstream &archive, const char *filename, int &endP
     int fileLocation = findArchivedFile(archive, filename, std::ios::beg, prevFileLocation, nextFileLocation, bytesToRemove);
 
     if (strlen(filename) == 0 || fileLocation == -1) {
-        std::cerr << "No such file in the archive!" << std::endl;
+        std::cout << "No such file in the archive!" << std::endl;
         return;
     }
 
@@ -184,9 +191,10 @@ void Archiver::removeFile(std::fstream &archive, const char *filename, int &endP
 }
 
 int Archiver::findArchivedFile(std::fstream &archive, const char *filename, int removeLocation, int &prevLocation, int &nextLocation, int &bytesToRemove) {
-  if (removeLocation == -1) {
-      return -1;
-  }
+    if (removeLocation == -1) {
+        return -1;
+    }
+
     FileHeader header;
     int dirLen = directoryLen(filename);
 
@@ -201,7 +209,7 @@ int Archiver::findArchivedFile(std::fstream &archive, const char *filename, int 
             return findArchivedFile(archive, filename + dirLen, header.childOffset_, prevLocation, nextLocation, bytesToRemove);
         } else {
             nextLocation = header.siblingOffset_;
-            bytesToRemove = header.fileSize_ + 16 + header.filenameLen_;
+            bytesToRemove = (int)archive.tellg() - prev + header.fileSize_ ;
             return removeLocation;
         }
     }
@@ -323,4 +331,33 @@ void Archiver::shiftFileContent(std::fstream &archive, int &readPos, int &writeP
 
         writePos = archive.tellg();
     }
+}
+
+void Archiver::addFileToArchive(std::fstream &archive, const char *filename) {
+    if (!FileManager::checkIfFileExists(filename)) {
+        std::cout << "File does not exist" << std::endl;
+        return;
+    }
+
+    int fileSize = FileManager::getFileSize(filename);
+    const char *file = filename + FileManager::getFilenameFromPath(filename);
+
+    archive.seekg(0, std::ios::beg);
+
+    FileHeader header;
+    FileHeader newFile(fileSize, file);
+    readFileHeader(archive, &header);
+
+    newFile.siblingOffset_ = header.childOffset_;
+
+    archive.seekp(0, std::ios::end);
+
+    header.childOffset_ = archive.tellg();
+
+    FileManager::saveFileHeaderToArchive(archive, &newFile);
+    FileManager::saveFileContentToArchive(archive, filename);
+
+    archive.seekp(0, std::ios::beg);
+
+    FileManager::saveFileHeaderToArchive(archive, &header);
 }

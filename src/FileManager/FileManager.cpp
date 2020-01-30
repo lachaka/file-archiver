@@ -164,6 +164,17 @@ void FileManager::saveFileContentToArchive(std::ofstream &archiveFile, const cha
     ifs.close();
 }
 
+void FileManager::saveFileContentToArchive(std::fstream &archiveFile, const char *filePath) {
+    std::ifstream ifs(filePath, std::ios::binary);
+    if (ifs.bad()) {
+        throw std::runtime_error("Archiver::saveFileContentToArchive() - error while saving file to archive");
+    }
+
+    archiveFile << ifs.rdbuf();
+
+    ifs.close();
+}
+
 void FileManager::rewriteOffsetOnPosition(std::ofstream &archiveFile, int position, int value) {
     if (position == -1) {
         throw std::runtime_error("FileManager::rewriteOffsetOnPosition() invalid position value");
@@ -221,4 +232,16 @@ bool FileManager::isDirEmpty(const char *directory) {
         return st.st_size == 0;
     }
     return false;
+}
+
+int FileManager::getFilenameFromPath(const char *filename) {
+    int i = strlen(filename);
+
+    for (; i > 0; --i) {
+        if (filename[i] == '/') {
+            break;
+        }
+    }
+
+    return i;
 }

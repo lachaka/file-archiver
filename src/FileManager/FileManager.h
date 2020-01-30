@@ -12,12 +12,13 @@ namespace FileManager {
     char *joinFilename(const char *path, const char *file);
 
     bool checkIfFileExists(const char *filename);
-   // bool isDirectory(const char *filename);
 
     void saveFileHeaderToArchive(std::ofstream &archiveFile, const FileHeader *file);
     void saveFileHeaderToArchive(std::fstream &archiveFile, const FileHeader *file);
 
     void saveFileContentToArchive(std::ofstream &archiveFile, const char *filePath);
+    void saveFileContentToArchive(std::fstream &archiveFile, const char *filePath);
+
     void rewriteOffsetOnPosition(std::ofstream &archiveFile, int offset, int value);
 
     int getFileSize(const char *file);
@@ -32,6 +33,8 @@ namespace FileManager {
     const char *getDirFromPath(const char *path);
 
     bool isDirEmpty(const char *path);
+
+    int getFilenameFromPath(const char *filename);
 
 };
 

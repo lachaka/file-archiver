@@ -37,6 +37,8 @@ private:
     int findArchivedFile(std::fstream &archive, const char *filename, int currLocation, int &prevLocation, int &nextLocation, int &bytesToRemove);
 
     void changeFileHeadersOffset(std::fstream &archive, int removeFileLocation, int bytesToRemove, int currLocation, int nextFileLocation);
+
+    void addFileToArchive(std::fstream &archive, const char *filename);
 };
 
 
