@@ -11,10 +11,10 @@ struct FileHeader {
     unsigned int filenameLen_;
     char* filename_;
 
-    FileHeader() {}
+    FileHeader() : siblingOffset_(-1), childOffset_(-1), fileSize_(0), filenameLen_(0), filename_(nullptr) {}
 
-    FileHeader(unsigned int fileSize, const char *filename)
-          : siblingOffset_(-1), childOffset_(-1), fileSize_(fileSize) {
+    FileHeader(unsigned int fileSize, const char *filename, int childOffset = -1)
+          : siblingOffset_(-1), childOffset_(childOffset), fileSize_(fileSize) {
 
         if (!filename) {
             throw std::invalid_argument("FileHeader::filename is invalid");
@@ -27,6 +27,18 @@ struct FileHeader {
 
     ~FileHeader() {
         delete[] filename_;
+    }
+
+    void changeFilename(const char* file) {
+        if (!file) {
+            throw std::invalid_argument("FileHeader::changeFilename() invalid filename");
+        }
+        if (!filename_) {
+            delete[] filename_;
+        }
+
+        filename_ = new char[strlen(file) + 1];
+        strcpy(filename_, file);
     }
 
     bool isDirectory() const {

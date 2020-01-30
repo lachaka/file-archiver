@@ -7,19 +7,36 @@
 class Archiver {
 public:
     explicit Archiver(const char *archiveName);
+    ~Archiver();
 
-    void create(const char *directory);
+    void create(char *directory);
     void extract(const char *location="./");
     void list();
-    void removeFile(const char *filename);
-    void addFile(const char *filename);
+    void remove(const char *filename);
+    void add(const char *filename);
 
 private:
     char *archiveName_;
 
-    void extractEntry(std::ifstream &archive, int pos);
-    void readFileHeader(std::ifstream &input, FileHeader *header);
+    void extractEntry(std::ifstream &archive, int pos, const char *dirPath);
+
+    void readFileHeader(std::ifstream &input, FileHeader *header); // add to filemanager
+    void readFileHeader(std::fstream &input, FileHeader *header);
+
     void extractFile(std::ifstream &archive, const FileHeader *header);
+
+    void removeFile(std::fstream &archive, const char *filename, int &endPos);
+
+    int directoryLen(const char *filename);
+
+    void shiftArchiveContent(std::fstream &archive, int offset, int &endPos, int emptySpace);
+    void shiftFileHeader(std::fstream &archive, int &readPos, int &writePos, FileHeader *header, int emptySpace);
+
+    void shiftFileContent(std::fstream &archive, int &readPos, int &writePos, unsigned int fileSize);
+
+    int findArchivedFile(std::fstream &archive, const char *filename, int currLocation, int &prevLocation, int &nextLocation, int &bytesToRemove);
+
+    void changeFileHeadersOffset(std::fstream &archive, int removeFileLocation, int bytesToRemove, int currLocation, int nextFileLocation);
 };
 
 

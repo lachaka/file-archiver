@@ -2,23 +2,37 @@
 #ifndef FILE_ARCHIVER_FILEMANAGER_H
 #define FILE_ARCHIVER_FILEMANAGER_H
 
-#include "FileTree/FileTreeNode.h"
+#include <fstream>
+
 #include "DataDescriptors/FileHeader.h"
 
 namespace FileManager {
-    void directoryWalk(const char *path, FileTreeNode *&r);
-    char *join(const char *path, const char *file);
+    void directoryWalk(std::ofstream &archive, char *&path, unsigned prevHeader);
+    void constructFilePath(char *&path, const char *file);
+    char *joinFilename(const char *path, const char *file);
 
     bool checkIfFileExists(const char *filename);
-    bool isDirectory(const char *filename);
+   // bool isDirectory(const char *filename);
 
     void saveFileHeaderToArchive(std::ofstream &archiveFile, const FileHeader *file);
+    void saveFileHeaderToArchive(std::fstream &archiveFile, const FileHeader *file);
+
     void saveFileContentToArchive(std::ofstream &archiveFile, const char *filePath);
-    void rewriteOffsetWithEndPos(std::ofstream &archiveFile, int offset);
+    void rewriteOffsetOnPosition(std::ofstream &archiveFile, int offset, int value);
 
     int getFileSize(const char *file);
 
     bool createDirectory(const char *directory);
+
+    void cutFilenameFromPath(char *&path);
+
+    void saveDirHeader(std::ofstream &ofstream, const char *path);
+
+
+    const char *getDirFromPath(const char *path);
+
+    bool isDirEmpty(const char *path);
+
 };
 
 

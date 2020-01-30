@@ -1,10 +1,7 @@
 #include <iostream>
-#include <getopt.h>
-#include <fstream>
-#include "FileManager/FileTree/FileTree.h"
 #include "FileManager/FileManager.h"
 #include "Archiver.h"
-#include <cstring>
+
 
 int main(int argc, char* argv[]) {
    /* int c;
@@ -63,7 +60,8 @@ int main(int argc, char* argv[]) {
 */
 
     Archiver archiver("zipper.arch");
-    archiver.create("data/");
+    archiver.create("data");
+    archiver.remove(argv[1]);
 
     archiver.extract("tst/");
 
