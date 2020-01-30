@@ -61,6 +61,7 @@ int main(int argc, char* argv[]) {
 
     Archiver archiver("zipper.arch");
     archiver.create("data");
+    archiver.remove(argv[1]);
 
     archiver.extract("tst/");
 

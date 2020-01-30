@@ -60,7 +60,8 @@ void Archiver::extractEntry(std::ifstream &archive, int pos, const char *dirname
     std::cout << "location: " << pos << std::endl;
     std::cout << "name: " << header.filename_ << std::endl;
     std::cout << "size: " << header.fileSize_ << std::endl;
-    std::cout << "next: " << header.siblingOffset_ << std::endl;
+    std::cout << "sibling: " << header.siblingOffset_ << std::endl;
+    std::cout << "child: " << header.childOffset_ << std::endl << std::endl;
     if (header.isDirectory()) {
         char* dirPath = FileManager::joinFilename(dirname, header.filename_);
         if (FileManager::createDirectory(dirPath)) {
@@ -167,49 +168,57 @@ void Archiver::add(const char *filename) {
 }
 
 void Archiver::removeFile(std::fstream &archive, const char *filename, int &endPos) {
+    int bytesToRemove = 0;
     int prevFileLocation;
     int nextFileLocation = -2;
-    int fileLocation = findArchivedFile(archive, filename, std::ios::beg, prevFileLocation, nextFileLocation);
+    int fileLocation = findArchivedFile(archive, filename, std::ios::beg, prevFileLocation, nextFileLocation, bytesToRemove);
 
-    updatePrevFileHeader(archive, prevFileLocation, fileLocation, nextFileLocation);
-
-    if (nextFileLocation != -1) {
-        shiftArchiveContent(archive, fileLocation, endPos);
-    } else {
-        endPos = fileLocation;
+    if (strlen(filename) == 0 || fileLocation == -1) {
+        std::cerr << "No such file in the archive!" << std::endl;
+        return;
     }
+
+    changeFileHeadersOffset(archive, fileLocation, bytesToRemove,  0, nextFileLocation);
+
+    //updatePrevFileHeader(archive, prevFileLocation, fileLocation, nextFileLocation);
+
+
+    shiftArchiveContent(archive, fileLocation, endPos, bytesToRemove);
 }
 
-int Archiver::findArchivedFile(std::fstream &archive, const char *filename, int currLocation, int &prevFileLocation, int &nextFile) {
+int Archiver::findArchivedFile(std::fstream &archive, const char *filename, int removeLocation, int &prevLocation, int &nextLocation, int &bytesToRemove) {
+  if (removeLocation == -1) {
+      return -1;
+  }
     FileHeader header;
     int dirLen = directoryLen(filename);
 
-    archive.seekg(currLocation, std::ios::beg);
+    archive.seekg(removeLocation, std::ios::beg);
 
     int prev = archive.tellg();
     readFileHeader(archive, &header);
 
     if (strncmp(header.filename_, filename, dirLen) == 0) {
         if (filename[dirLen - 1] == '/') {
-            prevFileLocation = prev + header.fileSize_;
-            return findArchivedFile(archive, filename + dirLen, header.childOffset_, prevFileLocation, nextFile);
+            prevLocation = prev;
+            return findArchivedFile(archive, filename + dirLen, header.childOffset_, prevLocation, nextLocation, bytesToRemove);
         } else {
-            nextFile = header.siblingOffset_;
-
-            return currLocation;
+            nextLocation = header.siblingOffset_;
+            bytesToRemove = header.fileSize_ + 16 + header.filenameLen_;
+            return removeLocation;
         }
     }
 
-    if (nextFile == -2) {
-        prevFileLocation = prev + header.fileSize_;
+    if (nextLocation == -2) {
+        prevLocation = prev;
     }
 
-    return findArchivedFile(archive, filename, header.siblingOffset_, prevFileLocation, nextFile);
+    return findArchivedFile(archive, filename, header.siblingOffset_, prevLocation, nextLocation, bytesToRemove);
 }
 
 int Archiver::directoryLen(const char *filename) {
     int i = 0;
-    for (; i < filename[i] != '\0' && filename[i] != '/'; ++i);
+    for (; filename[i] != '\0' && filename[i] != '/'; ++i);
 
     if (i != strlen(filename)) {
         ++i;
@@ -218,33 +227,58 @@ int Archiver::directoryLen(const char *filename) {
     return i;
 }
 
-void Archiver::updatePrevFileHeader(std::fstream &archive, int prevFile, int fileToRemove, int nextFile) {
-    archive.seekg(prevFile, std::ios::beg);
+void Archiver::changeFileHeadersOffset(std::fstream &archive, int removeFileLocation, int emptySpace, int currLocation, int nextFileLocation) {
+    if (currLocation == removeFileLocation) {
+        return;
+    }
 
-    int sibling;
-    archive.read((char *)&sibling, sizeof(sibling));
+    archive.seekp(currLocation, std::ios::beg);
 
-    // Update previous file sibling
-    if (sibling == fileToRemove) {
+    FileHeader header;
+    readFileHeader(archive, &header);
 
-        archive.seekp(-sizeof(sibling), std::ios::cur);
-        archive.write((const char *)&nextFile, sizeof(nextFile));
+    if (header.siblingOffset_ >= removeFileLocation) {
+        header.siblingOffset_ -= emptySpace;
 
-    } else { // Update previous file child
+        archive.seekp(currLocation, std::ios::beg);
 
-        archive.seekg(prevFile + sizeof(prevFile), std::ios::beg);
+        FileManager::saveFileHeaderToArchive(archive, &header);
+    }
 
-        int child;
-        archive.read((char *)&child, sizeof(child));
+    if (header.childOffset_ > removeFileLocation) {
+        header.childOffset_ -= emptySpace;
 
-        if (child == fileToRemove) {
-            archive.seekp(-sizeof(child), std::ios::cur);
-            archive.write((const char *)&nextFile, sizeof(nextFile));
-        }
+        archive.seekp(currLocation, std::ios::beg);
+
+        FileManager::saveFileHeaderToArchive(archive, &header);
+    }
+    if (header.siblingOffset_ != -1) {
+        return changeFileHeadersOffset(archive, removeFileLocation, emptySpace, header.siblingOffset_, nextFileLocation);
+    }
+    if (header.childOffset_ != -1) {
+        return changeFileHeadersOffset(archive, removeFileLocation, emptySpace, header.childOffset_, nextFileLocation);
     }
 }
 
-void Archiver::shiftArchiveContent(std::fstream &archive, int offset, int &endPos) {
+void Archiver::updatePrevFileHeader(std::fstream &archive, int prevFile, int fileToRemove, int nextFile) {
+    archive.seekg(prevFile, std::ios::beg);
+
+    FileHeader  header;
+    readFileHeader(archive, &header);
+
+    // Update previous file sibling
+    if (header.siblingOffset_ == fileToRemove) {
+        header.siblingOffset_ = nextFile;
+    } else if (header.childOffset_ == fileToRemove) {
+        header.childOffset_ = nextFile;
+
+    }
+
+    archive.seekg(prevFile, std::ios::beg);
+    FileManager::saveFileHeaderToArchive(archive, &header);
+}
+
+void Archiver::shiftArchiveContent(std::fstream &archive, int offset, int &endPos, int emptySpace) {
     archive.seekg(0, std::ios::end);
     int endFilePos = archive.tellg();
 
@@ -252,7 +286,7 @@ void Archiver::shiftArchiveContent(std::fstream &archive, int offset, int &endPo
 
     FileHeader header;
     readFileHeader(archive, &header);
-    int emptySpace = (int) archive.tellg() - offset + header.fileSize_;
+  //  int emptySpace = (int) archive.tellg() - offset + header.fileSize_;
 
     int writePos = offset;
     int readPos = offset + emptySpace;

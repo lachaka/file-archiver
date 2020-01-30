@@ -25,17 +25,21 @@ private:
 
     void extractFile(std::ifstream &archive, const FileHeader *header);
 
-    int findArchivedFile(std::fstream &archive, const char *filename, int currLocation, int &prevFileLocation, int &nextFile);
+    //int findArchivedFile(std::fstream &archive, const char *filename, int currLocation, int &prevFileLocation, int &nextFile);
     void removeFile(std::fstream &archive, const char *filename, int &endPos);
 
     int directoryLen(const char *filename);
 
     void updatePrevFileHeader(std::fstream &archive, int prevFile, int fileToRemove, int nextFile);
 
-    void shiftArchiveContent(std::fstream &archive, int offset, int &endPos);
+    void shiftArchiveContent(std::fstream &archive, int offset, int &endPos, int emptySpace);
     void shiftFileHeader(std::fstream &archive, int &readPos, int &writePos, FileHeader *header, int emptySpace);
 
     void shiftFileContent(std::fstream &archive, int &readPos, int &writePos, unsigned int fileSize);
+
+    int findArchivedFile(std::fstream &archive, const char *filename, int currLocation, int &prevLocation, int &nextLocation, int &bytesToRemove);
+
+    void changeFileHeadersOffset(std::fstream &archive, int removeFileLocation, int bytesToRemove, int currLocation, int nextFileLocation);
 };
 
 
