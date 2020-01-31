@@ -50,7 +50,35 @@ void Archiver::extract(const char *location) {
 }
 
 void Archiver::list() {
+    std::ifstream archive(archiveName_, std::ios::binary);
+    if (!archive) {
+        throw std::runtime_error("FileManager::extract error while opening archived file");
+    }
+    showInfo(archive, 0, "");
+}
 
+void Archiver::showInfo(std::ifstream &archive, int pos, const char *dirname) {
+    archive.seekg(pos, std::ios::beg);
+
+    FileHeader header;
+    readFileHeader(archive, &header);
+
+    if (header.isDirectory()) {
+        char* dirPath = FileManager::joinFilename(dirname, header.filename_);
+
+        if (header.childOffset_ != -1) {
+            showInfo(archive, header.childOffset_, dirPath);
+        }
+
+        delete[] dirPath;
+
+    } else {
+        std::cout << dirname << header.filename_ << " - " << header.fileSize_ << " bytes" << std::endl;
+    }
+
+    if (header.siblingOffset_ != -1) {
+        showInfo(archive, header.siblingOffset_, dirname);
+    }
 }
 
 void Archiver::extractEntry(std::ifstream &archive, int pos, const char *dirname) {
@@ -164,6 +192,11 @@ void Archiver::remove(const char *filename) {
 }
 
 void Archiver::add(const char *filename) {
+    if (!FileManager::checkIfFileExists(filename)) {
+        std::cout << "File does not exist" << std::endl;
+        return;
+    }
+
     std::fstream archive(archiveName_);
     if (!archive) {
         throw std::runtime_error("Archvier::addFile() Error while opening archive");
@@ -187,7 +220,7 @@ void Archiver::removeFile(std::fstream &archive, const char *filename, int &endP
 
     changeFileHeadersOffset(archive, fileLocation, bytesToRemove,  0, nextFileLocation);
 
-    shiftArchiveContent(archive, fileLocation, endPos, bytesToRemove);
+    shiftArchiveContent(archive, fileLocation, endPos, bytesToRemove, fileLocation);
 }
 
 int Archiver::findArchivedFile(std::fstream &archive, const char *filename, int removeLocation, int &prevLocation, int &nextLocation, int &bytesToRemove) {
@@ -233,9 +266,9 @@ int Archiver::directoryLen(const char *filename) {
 }
 
 void Archiver::changeFileHeadersOffset(std::fstream &archive, int removeFileLocation, int emptySpace, int currLocation, int nextFileLocation) {
-
     archive.seekp(currLocation, std::ios::beg);
-    if (archive.tellg() >= removeFileLocation || currLocation == removeFileLocation) {
+
+    if (archive.tellg() >= removeFileLocation || currLocation >= removeFileLocation) {
         return;
     }
 
@@ -265,15 +298,15 @@ void Archiver::changeFileHeadersOffset(std::fstream &archive, int removeFileLoca
 
         FileManager::saveFileHeaderToArchive(archive, &header);
     }
-    if (header.siblingOffset_ != -1) {
+    if (header.siblingOffset_ != -1 && archive.tellg() != removeFileLocation) {
         changeFileHeadersOffset(archive, removeFileLocation, emptySpace, header.siblingOffset_, nextFileLocation);
     }
-    if (header.childOffset_ != -1) {
+    if (header.childOffset_ != -1 && archive.tellg() != removeFileLocation) {
         changeFileHeadersOffset(archive, removeFileLocation, emptySpace, header.childOffset_, nextFileLocation);
     }
 }
 
-void Archiver::shiftArchiveContent(std::fstream &archive, int offset, int &endPos, int emptySpace) {
+void Archiver::shiftArchiveContent(std::fstream &archive, int offset, int &endPos, int emptySpace, int removePos) {
     archive.seekg(0, std::ios::end);
     int endFilePos = archive.tellg();
 
@@ -286,23 +319,23 @@ void Archiver::shiftArchiveContent(std::fstream &archive, int offset, int &endPo
     int readPos = offset + emptySpace;
 
     while (readPos != endFilePos) {
-        shiftFileHeader(archive, readPos, writePos, &header, emptySpace);
+        shiftFileHeader(archive, readPos, writePos, &header, emptySpace, removePos);
         shiftFileContent(archive, readPos, writePos, header.fileSize_);
     }
 
     endPos = writePos;
 }
 
-void Archiver::shiftFileHeader(std::fstream &archive, int &readPos, int &writePos, FileHeader *header, int emptySpace) {
+void Archiver::shiftFileHeader(std::fstream &archive, int &readPos, int &writePos, FileHeader *header, int emptySpace, int removePos) {
     archive.seekg(readPos, std::ios::beg);
     readFileHeader(archive, header);
     readPos = archive.tellg();
 
-    if (header->siblingOffset_ != -1) {
+    if (header->siblingOffset_ != -1 && header->siblingOffset_ > removePos) {
         header->siblingOffset_ -= emptySpace;
     }
 
-    if (header->childOffset_ != -1) {
+    if (header->childOffset_ != -1 && header->childOffset_ > removePos) {
         header->childOffset_ -= emptySpace;
     }
 
@@ -334,11 +367,6 @@ void Archiver::shiftFileContent(std::fstream &archive, int &readPos, int &writeP
 }
 
 void Archiver::addFileToArchive(std::fstream &archive, const char *filename) {
-    if (!FileManager::checkIfFileExists(filename)) {
-        std::cout << "File does not exist" << std::endl;
-        return;
-    }
-
     int fileSize = FileManager::getFileSize(filename);
     const char *file = filename + FileManager::getFilenameFromPath(filename);
 

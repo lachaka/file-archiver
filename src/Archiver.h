@@ -29,8 +29,8 @@ private:
 
     int directoryLen(const char *filename);
 
-    void shiftArchiveContent(std::fstream &archive, int offset, int &endPos, int emptySpace);
-    void shiftFileHeader(std::fstream &archive, int &readPos, int &writePos, FileHeader *header, int emptySpace);
+    void shiftArchiveContent(std::fstream &archive, int offset, int &endPos, int emptySpace, int removePos);
+    void shiftFileHeader(std::fstream &archive, int &readPos, int &writePos, FileHeader *header, int emptySpace, int removePos);
 
     void shiftFileContent(std::fstream &archive, int &readPos, int &writePos, unsigned int fileSize);
 
@@ -39,6 +39,8 @@ private:
     void changeFileHeadersOffset(std::fstream &archive, int removeFileLocation, int bytesToRemove, int currLocation, int nextFileLocation);
 
     void addFileToArchive(std::fstream &archive, const char *filename);
+
+    void showInfo(std::ifstream &archive, int pos, const char *dirname);
 };
 
 
