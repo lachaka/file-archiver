@@ -8,14 +8,17 @@
 #include "FileManager.h"
 
 void FileManager::directoryWalk(std::ofstream &archive, char *&path, unsigned prevHeader) {
-    const char * lastDirname = getDirFromPath(path);
+    const char *lastDirname = getDirFromPath(path);
     FileHeader header(0, lastDirname);
     delete[] lastDirname;
+
     saveFileHeaderToArchive(archive, &header);
+
     bool empty = true;
-    int lastHeader = 0;
+    int lastHeader = 4;
     DIR *dir;
     struct dirent *dp;
+
     if ((dir = opendir (path)) != nullptr) {
         int prev;
         while ((dp = readdir (dir)) != nullptr) {
@@ -24,7 +27,7 @@ void FileManager::directoryWalk(std::ofstream &archive, char *&path, unsigned pr
                 continue;
             }
             if (empty) {
-                rewriteOffsetOnPosition(archive, 4 + prevHeader, archive.tellp());
+                rewriteOffsetOnPosition(archive, sizeof(header.childOffset_) + prevHeader, archive.tellp());
                 empty = false;
             }
             if (dp->d_type == DT_DIR) {
@@ -37,10 +40,15 @@ void FileManager::directoryWalk(std::ofstream &archive, char *&path, unsigned pr
 
                 FileHeader header(getFileSize(filename), dp->d_name);
 
-                saveFileHeaderToArchive(archive, &header);
+                try {
+                    saveFileHeaderToArchive(archive, &header);
 
-                if (header.fileSize_ > 0) {
-                    saveFileContentToArchive(archive, filename);
+                    if (header.fileSize_ > 0) {
+                        saveFileContentToArchive(archive, filename);
+                    }
+                } catch (std::runtime_error &rte) {
+                    delete[] filename;
+                    throw rte;
                 }
 
                 delete[] filename;
@@ -55,13 +63,8 @@ void FileManager::directoryWalk(std::ofstream &archive, char *&path, unsigned pr
         closedir (dir);
     } else {
         perror("");
-        throw std::runtime_error("FileManager::directoryWalk");
+        throw std::runtime_error("FileManager::directoryWalk()");
     }
-}
-
-void FileManager::saveDirHeader(std::ofstream &archive, const char *path) {
-    FileHeader header(0, path);
-    saveFileHeaderToArchive(archive, &header);
 }
 
 bool FileManager::checkIfFileExists(const char *filename) {
@@ -76,7 +79,7 @@ void FileManager::constructFilePath(char *&path, const char *file) {
     strcat(fullPath, "/");
     strcat(fullPath, file);
 
-    //delete[] path;
+    delete[] path;
     path = fullPath;
 }
 
@@ -103,87 +106,24 @@ void FileManager::cutFilenameFromPath(char *&path) {
     }
     char *temp = new char[strlen(path) + 1];
     strcpy(temp, path);
+
     delete[] path;
+
     path = temp;
-}
-
-void FileManager::saveFileHeaderToArchive(std::ofstream &archiveFile, const FileHeader *file) {
-    archiveFile.write((const char*)&file->siblingOffset_, sizeof(file->siblingOffset_));
-    if (!archiveFile) {
-        throw std::runtime_error("siblingOffset");
-    }
-    archiveFile.write((const char*)&file->childOffset_, sizeof(file->childOffset_));
-    if (!archiveFile) {
-        throw std::runtime_error("childoffset");
-    }
-    archiveFile.write((const char*)&file->fileSize_, sizeof(file->fileSize_));
-    if (!archiveFile) {
-        throw std::runtime_error("fileSize");
-    }
-    archiveFile.write((const char*)&file->filenameLen_, sizeof(file->filenameLen_));
-    if (!archiveFile) {
-        throw std::runtime_error("fileanamelen");
-    }
-    archiveFile.write(file->filename_, file->filenameLen_);
-    if (!archiveFile) {
-        throw std::runtime_error("filename");
-    }
-}
-
-void FileManager::saveFileHeaderToArchive(std::fstream &archiveFile, const FileHeader *file) {
-    archiveFile.write((const char*)&file->siblingOffset_, sizeof(file->siblingOffset_));
-    if (!archiveFile) {
-        throw std::runtime_error("siblingOffset");
-    }
-    archiveFile.write((const char*)&file->childOffset_, sizeof(file->childOffset_));
-    if (!archiveFile) {
-        throw std::runtime_error("childoffset");
-    }
-    archiveFile.write((const char*)&file->fileSize_, sizeof(file->fileSize_));
-    if (!archiveFile) {
-        throw std::runtime_error("fileSize");
-    }
-    archiveFile.write((const char*)&file->filenameLen_, sizeof(file->filenameLen_));
-    if (!archiveFile) {
-        throw std::runtime_error("filenameLen");
-    }
-    archiveFile.write(file->filename_, file->filenameLen_);
-    if (!archiveFile) {
-        throw std::runtime_error("filename");
-    }
-}
-
-void FileManager::saveFileContentToArchive(std::ofstream &archiveFile, const char *filePath) {
-    std::ifstream ifs(filePath, std::ios::binary);
-    if (ifs.bad()) {
-        throw std::runtime_error("Archiver::saveFileContentToArchive() - error while saving file to archive");
-    }
-
-    archiveFile << ifs.rdbuf();
-
-    ifs.close();
-}
-
-void FileManager::saveFileContentToArchive(std::fstream &archiveFile, const char *filePath) {
-    std::ifstream ifs(filePath, std::ios::binary);
-    if (ifs.bad()) {
-        throw std::runtime_error("Archiver::saveFileContentToArchive() - error while saving file to archive");
-    }
-
-    archiveFile << ifs.rdbuf();
-
-    ifs.close();
 }
 
 void FileManager::rewriteOffsetOnPosition(std::ofstream &archiveFile, int position, int value) {
     if (position == -1) {
-        throw std::runtime_error("FileManager::rewriteOffsetOnPosition() invalid position value");
+        throw std::runtime_error("FileManager::rewriteOffsetOnPosition() Invalid position value");
     }
+
     archiveFile.seekp(position);
     archiveFile.write((const char *)&value, sizeof(value));
+
     if (archiveFile.fail()) {
-        throw std::runtime_error("FileManager::rewriteOffsetOnPosition() error while rewriting value in file");
+        throw std::runtime_error("FileManager::rewriteOffsetOnPosition() Error while rewriting value in file");
     }
+
     archiveFile.seekp(0, std::ios::end);
 }
 
@@ -199,6 +139,7 @@ int FileManager::getFileSize(const char *file) {
 
 bool FileManager::createDirectory(const char *directory) {
     struct stat st;
+
     // try to create directory if it does not exist
     if (stat(directory, &st) == -1) {
         return mkdir(directory, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0;
@@ -224,16 +165,6 @@ const char *FileManager::getDirFromPath(const char *path) {
     return dir;
 }
 
-
-bool FileManager::isDirEmpty(const char *directory) {
-    struct stat st;
-
-    if (stat(directory, &st) == 0) {
-        return st.st_size == 0;
-    }
-    return false;
-}
-
 int FileManager::getFilenameFromPath(const char *filename) {
     int i = strlen(filename);
 
@@ -244,4 +175,28 @@ int FileManager::getFilenameFromPath(const char *filename) {
     }
 
     return i;
+}
+
+bool FileManager::patterMatch(const char *str, const char *pattern, int index) {
+    if (*str == '\0') {
+        return *(pattern + index) == '\0';
+    }
+
+    if (pattern[index] == '*' && *str == pattern[index + 1]) {
+        ++index;
+    }
+
+    if (pattern[index] == '*' && index == 0) {
+        return patterMatch(str + 1, pattern, index) || patterMatch(str + 1, pattern, index + 1);
+    }
+
+    if (pattern[index] == '*' && index != 0 && pattern[index - 1] == *str) {
+        return patterMatch(str + 1, pattern, index);
+    }
+
+    if (pattern[index] == '?' || pattern[index] == *str)  {
+        return patterMatch(str + 1, pattern, index + 1);
+    }
+
+    return false;
 }

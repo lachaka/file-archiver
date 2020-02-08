@@ -4,9 +4,22 @@
 
 #include <cstring>
 
+/**
+ * \struct FileHeader
+ *
+ * \brief FileHeader is structure combining essential data for each file
+ *          when they are stored into archive file.
+ *
+ * FileHeader uses \var siblingOffset_ and \var childOffset_ to implement tree
+ * structure into the binary file. This tree structure is very similar to
+ * the generic tree implementations where there are used two linked lists. Here
+ * by the help of the the variables we can store indexes from the archive.
+ * With this implementation I can easily add new files, without rewriting the hole
+ * archive. Just write the new content and the and connect the two indexes.
+ */
 struct FileHeader {
-    int siblingOffset_;
-    int childOffset_;
+    int siblingOffset_;         ///< index to next FileHeader from the current directory
+    int childOffset_;           ///< index to next FileHeader from the sub-directory
     unsigned int fileSize_;
     unsigned int filenameLen_;
     char* filename_;
@@ -33,9 +46,8 @@ struct FileHeader {
         if (!file) {
             throw std::invalid_argument("FileHeader::changeFilename() invalid filename");
         }
-        if (!filename_) {
-            delete[] filename_;
-        }
+
+        delete[] filename_;
 
         filename_ = new char[strlen(file) + 1];
         strcpy(filename_, file);

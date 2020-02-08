@@ -1,67 +1,26 @@
-#include <iostream>
-#include "FileManager/FileManager.h"
-#include "Archiver.h"
 
+
+#include <iostream>
+
+#include "ArgumentParser/ArgumentParser.h"
+#include "Archiver/Archiver.h"
 
 int main(int argc, char* argv[]) {
-   /* int c;
-    char short_options[] = "a:c:elp:r:";
+ /*   ArgumentParser argumentParser;
 
-    while (1) {
-        int option_index = 0;
-        static struct option long_options[] = {
-                {"add",      required_argument, 0, 'a' },
-                {"create",   required_argument, 0, 'c' },
-                {"extract",  no_argument,       0, 'e' },
-                {"list",     no_argument,       0, 'l' },
-                {"password", required_argument, 0, 'p' },
-                {"remove",   required_argument, 0, 'r' },
-                {0,          0,                 0,  0  }
-        };
-
-        c = getopt_long_only(argc, argv, short_options,
-                        long_options, &option_index);
-        if (c == -1)
-            break;
-
-        switch (c) {
-            case 'a':
-                printf("add file '%s'\n", optarg);
-                break;
-
-            case 'c':
-                printf("create file '%s'\n", optarg);
-                break;
-
-            case 'e':
-                printf("extract \n");
-                break;
-
-            case 'l':
-                printf("list \n");
-                break;
-
-            case 'p':
-                printf("password '%s'\n", optarg);
-                break;
-
-            case 'r':
-                printf("remove '%s'\n", optarg);
-                break;
-        }
-    }
-
-    if (optind < argc) {
-        printf("non-option ARGV-elements: ");
-        while (optind < argc)
-            printf("%s ", argv[optind++]);
-        printf("\n");
+    try {
+        argumentParser.parse(argc, argv);
+    } catch (std::invalid_argument &invalid_arg) {
+        std::cerr << invalid_arg.what() << std::endl;
+    } catch (std::runtime_error &rte) {
+        std::cerr << rte.what() << std::endl;
     }
 */
-
-    Archiver archiver("zipper.arch");
-
-    archiver.extract("tst/");
+    Archiver archiver("tst");
+    archiver.create("data/");
+    archiver.encryptArchive("pesho");
 
     return 0;
 }
+
+
